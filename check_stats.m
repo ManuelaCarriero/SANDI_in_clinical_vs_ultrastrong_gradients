@@ -1025,19 +1025,7 @@ elseif strcmp(data,'WAND')
     writetable(T, '/media/nas_rete/Work_manuela/EMI_model-main/EMI_data/SANDI_PrismavsConnectome/WAND_Rsoma_MSE.txt', 'Delimiter', 'tab');
 
 end
-% figure,
-% for i=1:length(x)
-%     if labels_final(i)==any(cortical_regions)
-%         plot(x(i),y(i),'r.','MarkerSize',22)
-% 
-%     else
-%         plot(x(i),y(i),'b.','MarkerSize',22)
-% 
-%     end
-%     hold on
-% end
-% hold off
-% grid on
+
 
 figure,
 p_sub=scatter(x(logical_cortical_regions==0),y(logical_cortical_regions==0),'MarkerFaceColor','c','MarkerFaceAlpha',.5);%,'MarkerSize',22 
@@ -1050,6 +1038,244 @@ set(get(gca, 'YAxis'), 'FontWeight', 'bold','FontSize',14);
 set(gca,'box','off')
 
 xlabel('Mean Squared Error (MSE)','FontSize',19,'FontWeight','bold');
+ylabel('R_{soma}(\mum)','FontSize',19,'FontWeight','bold');
+% ylim([-5,25])
+title(title_str,'FontSize',16,'FontWeight','bold');
+grid on
+
+%% STUDY THE EFFECTS OF PVE
+load("/media/nas_rete/Work_manuela/EMI_model-main/computed_data_correctingMSE.mat")
+
+medians_rsoma_selected_WAND=medians_rsoma_subjs([1,9,11,14,16,21,22,28,29],:);
+labels_dwi_subjs_WAND=labels_dwi_subjs([1,9,11,14,16,21,22,28,29],:);
+means_pve_0_dwi_GM_subjs_WAND=V_pve_0_dwi_mean_subjs([1,9,11,14,16,21,22,28,29],:);
+means_pve_2_dwi_GM_subjs_WAND=V_pve_2_dwi_mean_subjs([1,9,11,14,16,21,22,28,29],:);
+
+load("/media/nas_rete/Work_manuela/EMI_model-main/computed_data_correctingMSE_GMvoxels_Vitality.mat")
+
+medians_rsoma_Vitality=medians_rsoma_subjs;
+labels_dwi_subjs_Vitality=labels_dwi_subjs;
+means_pve_0_dwi_GM_subjs_Vitality=V_pve_0_dwi_mean_subjs;
+means_pve_2_dwi_GM_subjs_Vitality=V_pve_2_dwi_mean_subjs;
+
+%we tested that labels are conserved between subjects
+
+labels_dwi_subjs_Vitality = labels_dwi_subjs_Vitality(1,:);
+labels_dwi_subjs_WAND = labels_dwi_subjs_WAND(1,:);
+
+disp('loaded data')
+
+%%
+medians_rsoma_WAND = nanmedian(medians_rsoma_selected_WAND,1);
+means_pve_0_dwi_WAND = nanmedian(means_pve_0_dwi_GM_subjs_WAND,1);
+means_pve_2_dwi_WAND = nanmedian(means_pve_2_dwi_GM_subjs_WAND,1);
+
+idx_nan_rsoma=find(isnan(medians_rsoma_WAND));
+idx_nan_pve_0=find(isnan(means_pve_0_dwi_WAND));
+idx_nan_pve_2=find(isnan(means_pve_2_dwi_WAND));
+
+idx_nan = unique([idx_nan_rsoma,idx_nan_pve_0,idx_nan_pve_2]);
+
+labels_dwi_subjs_WAND(idx_nan)=[];
+
+medians_rsoma_WAND(idx_nan)=[];
+means_pve_0_dwi_WAND(idx_nan)=[];
+means_pve_2_dwi_WAND(idx_nan)=[];
+
+medians_rsoma_Vitality = nanmedian(medians_rsoma_Vitality,1);
+means_pve_0_dwi_Vitality = nanmedian(means_pve_0_dwi_GM_subjs_Vitality,1);
+means_pve_2_dwi_Vitality = nanmedian(means_pve_2_dwi_GM_subjs_Vitality,1);
+
+idx_nan_rsoma=find(isnan(medians_rsoma_Vitality));
+idx_nan_pve_0=find(isnan(means_pve_0_dwi_Vitality));
+idx_nan_pve_2=find(isnan(means_pve_2_dwi_Vitality));
+
+idx_nan = unique([idx_nan_rsoma,idx_nan_pve_0,idx_nan_pve_2]);
+
+labels_dwi_subjs_Vitality(idx_nan)=[];
+
+medians_rsoma_Vitality(idx_nan)=[];
+means_pve_0_dwi_Vitality(idx_nan)=[];
+means_pve_2_dwi_Vitality(idx_nan)=[];
+
+disp('removed nans')
+
+%% fit 
+pve='CSF';
+
+disp('chosen pve')
+
+%%
+%Vitality
+
+
+
+y_Vitality = medians_rsoma_Vitality;
+
+if strcmp(pve,'CSF')
+    x_Vitality = means_pve_0_dwi_Vitality;
+elseif strcmp(pve,'WM')
+    x_Vitality = means_pve_2_dwi_Vitality;
+end
+
+% Fit a quadratic equation
+[pol_Vitality,S_Vitality] = polyfit(x_Vitality, y_Vitality, 1); %to plot the linear model I use this function
+
+alpha_Vitality = 0.05; % Significance level
+[y_fit_Vitality,delta_Vitality] = polyconf(pol_Vitality,x_Vitality,S_Vitality,'alpha',alpha_Vitality);
+
+[x_sorted_Vitality,index_Vitality] = sortrows(x_Vitality');
+y_fit_Vitality=y_fit_Vitality';
+delta_Vitality = delta_Vitality';
+y_fit_sorted_Vitality = y_fit_Vitality(index_Vitality);
+delta_sorted_Vitality = delta_Vitality(index_Vitality);
+
+%WAND 
+
+y_WAND = medians_rsoma_WAND;
+
+if strcmp(pve,'CSF')
+    x_WAND = means_pve_0_dwi_WAND;
+elseif strcmp(pve,'WM')
+    x_WAND = means_pve_2_dwi_WAND;
+end
+
+% Fit a quadratic equation
+[pol_WAND,S_WAND] = polyfit(x_WAND, y_WAND, 1); %to plot the linear model I use this function
+
+alpha_WAND = 0.05; % Significance level
+[y_fit_WAND,delta_WAND] = polyconf(pol_WAND,x_WAND,S_WAND,'alpha',alpha_WAND);
+
+[x_sorted_WAND,index_WAND] = sortrows(x_WAND');
+y_fit_WAND=y_fit_WAND';
+delta_WAND = delta_WAND';
+y_fit_sorted_WAND = y_fit_WAND(index_WAND);
+delta_sorted_WAND = delta_WAND(index_WAND);
+
+disp('fit done')
+
+%% PLOT Rsoma vs PVE
+
+figure, 
+
+s1=scatter(x_Vitality, y_Vitality,'MarkerFaceColor','blue','MarkerFaceAlpha',.3)
+hold on
+s2=scatter(x_WAND, y_WAND,'MarkerFaceColor','red','MarkerFaceAlpha',.3)
+
+% errorbar(x_Vitality, y_Vitality,std_rsoma_Vitality, std_rsoma_Vitality,"o",'Color','blue');
+
+
+%plot confidence interval shadow
+x_patch_Vitality = x_sorted_Vitality;
+y_patch_lower_Vitality = y_fit_sorted_Vitality-delta_sorted_Vitality;
+y_patch_higher_Vitality = y_fit_sorted_Vitality+delta_sorted_Vitality;
+
+x_all_Vitality = [x_patch_Vitality; flipud(x_patch_Vitality)];
+y_all_Vitality = [y_patch_higher_Vitality; flipud(y_patch_lower_Vitality)];
+
+patch(x_all_Vitality,y_all_Vitality,'blue','FaceAlpha',0.1,'EdgeColor','none')
+
+% hold on
+% plot(x_sorted_Vitality,y_fit_sorted_Vitality,'-','LineWidth',4,'Color',"w");
+hold on
+r1=plot(x_sorted_Vitality,y_fit_sorted_Vitality,'--','LineWidth',3,'Color',[0, 0, 0.55]);
+% hold on
+% plot(x_sorted_Vitality,y_fit_sorted_Vitality-delta_sorted_Vitality,'--',x_sorted_Vitality,y_fit_sorted_Vitality+delta_sorted_Vitality,'--','LineWidth',1.5,'Color',[0.5 0.5 0.5])
+
+%plot confidence interval shadow
+x_patch_WAND = x_sorted_WAND;
+y_patch_lower_WAND = y_fit_sorted_WAND-delta_sorted_WAND;
+y_patch_higher_WAND = y_fit_sorted_WAND+delta_sorted_WAND;
+
+x_all_WAND = [x_patch_WAND; flipud(x_patch_WAND)];
+y_all_WAND = [y_patch_higher_WAND; flipud(y_patch_lower_WAND)];
+
+patch(x_all_WAND,y_all_WAND,'red','FaceAlpha',0.1,'EdgeColor','none')
+
+% hold on
+% plot(x_sorted_WAND,y_fit_sorted_WAND,'-','LineWidth',4,'Color',"w");
+hold on
+r2=plot(x_sorted_WAND,y_fit_sorted_WAND,'--','LineWidth',3,'Color',[0.55, 0.27, 0.07]);
+% hold on
+% plot(x_sorted_WAND,y_fit_sorted_WAND-delta_sorted_WAND,'--',x_sorted_WAND,y_fit_sorted_WAND+delta_sorted_WAND,'--','LineWidth',1.5,'Color',[0.5 0.5 0.5])
+
+
+
+
+set(get(gca, 'XAxis'), 'FontWeight', 'bold','FontSize',14);
+set(get(gca, 'YAxis'), 'FontWeight', 'bold','FontSize',14);
+set(gca,'box','off')
+
+if strcmp(pve,'CSF')
+    xlabel('CSF Partial Volume Estimate','FontSize',19,'FontWeight','bold','FontName','Calibri');
+elseif strcmp(pve,'WM')
+    xlabel('WM Partial Volume Estimate','FontSize',19,'FontWeight','bold','FontName','Calibri');
+
+end
+ylabel('R_{soma}(\mum)','FontSize',19,'FontWeight','bold','FontName','Calibri');
+% title('R_{soma} vs MSE','FontSize',19,'FontWeight','bold','FontName','Calibri')
+% s.Color='b';
+legend([s1,s2,r1,r2],{'Clinical','Ultra-strong','Linear Fit Y=c+\beta_{Clinical}X','Linear Fit Y=c+\beta_{Ultra-strong}X'},'Location','northwest','FontSize',12,'FontWeight','bold')
+mdl_WAND=fitlm(x_WAND,y_WAND);
+mdl_Vitality=fitlm(x_Vitality,y_Vitality);
+M_WAND = table2array((mdl_WAND.Coefficients));
+M_Vitality = table2array((mdl_Vitality.Coefficients));
+coeff_WAND=num2str(round(M_WAND(2,1),1));
+coeff_Vitality=num2str(round(M_Vitality(2,1),1));
+txt={strcat('\beta_{Clinical}=',coeff_Vitality,'\mum'),strcat('\beta_{Ultra-strong}=',coeff_WAND,'\mum')};
+text(0.4,15,txt,'FontSize',14,'FontWeight','bold')
+x0=50;
+y0=50;
+width=650;%550;
+height=500;%450;
+set(gcf,'position',[x0,y0,width,height]);
+% ylim([40,200]);
+% xlim([0,0.00097])
+grid on
+
+% fitlm(medians_rsoma_WAND,medians_mse_WAND)
+% fitlm(medians_rsoma_Vitality,medians_mse_Vitality)
+
+
+
+fitlm(x_WAND,y_WAND)
+fitlm(x_Vitality,y_Vitality)
+
+%% PLOTS RSOMA VS PVE BASED ON CORTICAL VS SUBCORTICAL
+path='/media/nas_rete/Work_manuela/WAND_data/';
+cortical_regions = load(strcat(path,'AAL_cortical_labels.txt'));
+data='WAND';
+
+if strcmp(data,'Vitality')
+    x=x_Vitality;
+    y=y_Vitality;
+    logical_cortical_regions = ismember(labels_dwi_subjs_Vitality,cortical_regions);
+    title_str='Clinical Gradients';
+
+elseif strcmp(data,'WAND')
+    x=x_WAND;
+    y=y_WAND;
+    logical_cortical_regions = ismember(labels_dwi_subjs_WAND,cortical_regions);
+    title_str='Ultra-strong Gradients';
+
+end
+
+
+figure,
+p_sub=scatter(x(logical_cortical_regions==0),y(logical_cortical_regions==0),'MarkerFaceColor','c','MarkerFaceAlpha',.5);%,'MarkerSize',22 
+hold on
+p_cort=scatter(x(logical_cortical_regions==1),y(logical_cortical_regions==1),'MarkerFaceColor','m','MarkerFaceAlpha',.5);
+legend([p_cort,p_sub],{'Cortical Region','Subcortical Region'},'Location','northwest','FontSize',12,'FontWeight','bold') 
+
+set(get(gca, 'XAxis'), 'FontWeight', 'bold','FontSize',14);
+set(get(gca, 'YAxis'), 'FontWeight', 'bold','FontSize',14);
+set(gca,'box','off')
+if strcmp(pve,'CSF')
+    xlabel('CSF Partial Volume Estimate','FontSize',19,'FontWeight','bold','FontName','Calibri');
+elseif strcmp(pve,'WM')
+    xlabel('WM Partial Volume Estimate','FontSize',19,'FontWeight','bold','FontName','Calibri');
+
+end
 ylabel('R_{soma}(\mum)','FontSize',19,'FontWeight','bold');
 % ylim([-5,25])
 title(title_str,'FontSize',16,'FontWeight','bold');
@@ -1106,4 +1332,5 @@ t=title('NLLS predictions','FontSize',16,'FontWeight','bold');
 t.Units = 'normalized';
 t.Position(2) = 1.02; 
 grid on
+
 
